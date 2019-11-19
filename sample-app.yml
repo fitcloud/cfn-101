@@ -1,0 +1,542 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Saltware Sample Application CloudFormation Template
+
+# Metadata
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "Project Configuration"
+        Parameters:
+          - Project
+          - Environment
+
+      -
+        Label:
+          default: "Network Configuration"
+        Parameters:
+          - NetworkTemplateS3URL
+          - VPCCIDR
+          - PublicSubnet1CIDR
+          - PublicSubnet2CIDR
+          - PublicSubnet3CIDR
+          - PrivateSubnet1CIDR
+          - PrivateSubnet2CIDR
+          - PrivateSubnet3CIDR
+          - PrivateSubnetNAT1CIDR
+          - PrivateSubnetNAT2CIDR
+          - PrivateSubnetNAT3CIDR
+          - DedicatedNAT
+
+      -
+        Label:
+          default: "Bastion Configuration"
+        Parameters:
+          - EC2TemplateS3URL
+          - BastionInstanceType
+          - BastionAMIId
+          - KeyName
+          - AllocateEIP
+      -
+        Label:
+          default: "RDS Configuration"
+        Parameters:
+          - RDSTemplateS3URL
+          - RDSInstanceType
+          - RDSStorageSize
+          - RDSEngine
+          - RDSEngineVersion
+          - RDSMasterPassword
+          - RDSMultiAZ
+          - RDSDeletionProtection
+          - RDSBackupRetention
+
+      -
+        Label:
+          default: "Launch Template Configuration"
+        Parameters:
+          - LaunchTemplateS3URL
+          - EC2InstanceType
+          - AMIId
+
+      -
+        Label:
+          default: "AutoScaling Configuration"
+        Parameters:
+          - ASGTemplateS3URL
+
+      -
+        Label:
+          default: "ALB Configuration"
+        Parameters:
+          - ALBTemplateS3URL
+          - SSLCertificateArns
+
+    ParameterLabels:
+      Project:
+        default: Name of Project
+
+      ## VPC
+      VPCCIDR:
+        default: VPC CIDR
+      PublicSubnet1CIDR:
+        default: Public Subnet AZ1
+      PublicSubnet2CIDR:
+        default: Public Subnet AZ2
+      PublicSubnet3CIDR:
+        default: Public Subnet AZ3
+      PrivateSubnet1CIDR:
+        default: Private Subnet AZ1
+      PrivateSubnet2CIDR:
+        default: Private Subnet AZ2
+      PrivateSubnet3CIDR:
+        default: Private Subnet AZ3
+      PrivateSubnetNAT1CIDR:
+        default: Private NAT Subnet AZ1
+      PrivateSubnetNAT2CIDR:
+        default: Private NAT Subnet AZ2
+      PrivateSubnetNAT3CIDR:
+        default: Private NAT Subnet AZ3
+      DedicatedNAT:
+        default: Dedicated NAT gateways
+
+      ## EC2
+      BastionInstanceType:
+        default: Instance Type
+      BastionAMIId:
+        default: AMI Id
+      KeyName:
+        default: EC2 Key Pair Name
+      AllocateEIP:
+        default: Elastic IP
+
+      ## RDS
+      RDSInstanceType:
+        default: RDS instance type
+      RDSStorageSize:
+        default: RDS instance storage size
+      RDSEngine:
+        default: RDS instance engine
+      RDSEngineVersion:
+        default: RDS instance engine version
+      RDSMultiAZ:
+        default: RDS Multi-AZ deployment
+      RDSMasterPassword:
+        default: RDS database master password
+      RDSDeletionProtection:
+        default: RDS deletion protection
+      RDSBackupRetention:
+        default: RDS backup retention period
+
+      ## Launch Template
+      AMIId:
+        default: AMI Id
+      EC2InstanceType:
+        default: Instance Type
+
+      ## ALB
+      SSLCertificateArns:
+        default: SSL Certificate
+
+
+# Custom Variable for the environment
+Parameters:
+  # Keypair should be manually created prior to create cloudformation stack(EC2 -> KeyPair)
+  Project:
+    Description: Specify a project name -lowercase-.
+    Type: String
+    AllowedPattern: ^[a-z]*$
+
+  Environment:
+    Description: Specify a environment name.
+    Type: String
+    AllowedValues:
+      - test
+      - stag
+      - prod
+
+  ## VPC
+  NetworkTemplateS3URL:
+    Description: S3 URL of Network Template.
+    Type: String
+    AllowedPattern : ".+"
+
+  VPCCIDR:
+    Description: VPC CIDR block.
+    Type: String
+    Default: 10.10.0.0/16
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x.
+
+  # Public Subnets
+  PublicSubnet1CIDR:
+    Description: Public subnet 1 CIDR block.
+    Type: String
+    Default: 10.10.0.0/20
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and subnet of VPC.
+
+  PublicSubnet2CIDR:
+    Description: Public subnet 2 CIDR block.
+    Type: String
+    Default: 10.10.64.0/20
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and subnet of VPC.
+
+  PublicSubnet3CIDR:
+    Description: Public subnet 3 CIDR block.
+    Type: String
+    Default: 10.10.128.0/20
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and subnet of VPC.
+
+  # Private Subnets
+  PrivateSubnet1CIDR:
+    Description: Private subnet 1 CIDR block.
+    Type: String
+    Default: 10.10.16.0/20
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and subnet of VPC.
+
+  PrivateSubnet2CIDR:
+    Description: Private subnet 2 CIDR block.
+    Type: String
+    Default: 10.10.80.0/20
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and subnet of VPC.
+
+  PrivateSubnet3CIDR:
+    Description: Private subnet 3 CIDR block.
+    Type: String
+    Default: 10.10.144.0/20
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and subnet of VPC.
+
+  # Private NAT Subnets
+  PrivateSubnetNAT1CIDR:
+    Description: Private subnet NAT 1 CIDR block.
+    Type: String
+    Default: 10.10.32.0/20
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and subnet of VPC.
+
+  PrivateSubnetNAT2CIDR:
+    Description: Private subnet NAT 2 CIDR block.
+    Type: String
+    Default: 10.10.96.0/20
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and subnet of VPC.
+
+  PrivateSubnetNAT3CIDR:
+    Description: Private subnet NAT 3 CIDR block.
+    Type: String
+    Default: 10.10.160.0/20
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and subnet of VPC.
+
+  DedicatedNAT:
+    Description: Select "true" if you want to use dedicated ($) NAT gateways per subnet.
+    Type: String
+    AllowedValues:
+      - yes
+      - no
+
+  ## EC2
+  EC2TemplateS3URL:
+    Description: S3 URL of EC2 Template.
+    Type: String
+    AllowedPattern : ".+"
+  # Keypair should be manually created prior to create cloudformation stack(EC2 -> KeyPair)
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair
+
+  BastionInstanceType:
+    Description: Specify EC2 instance type
+    Type: String
+
+  BastionAMIId:
+    Description: Specify AMI Id
+    Type: AWS::EC2::Image::Id
+
+  AllocateEIP:
+    Description: Select "yes" if you want to assign EIP to an instance
+    Type: String
+    AllowedValues:
+      - yes
+      - no
+
+  ## RDS
+  RDSTemplateS3URL:
+    Description: S3 URL of RDS Template.
+    Type: String
+    AllowedPattern : ".+"
+
+  RDSInstanceType:
+    Description: Specify RDS instance type.
+    Type: String
+
+  RDSEngine:
+    Description: Specify RDS instance engine type.
+    Type: String
+    ConstraintDescription: must be a valid RDS Engine.
+    MinLength: 0
+    MaxLength: 20
+    Default: mysql
+    AllowedValues:
+      - mysql
+      - postgres
+      - aurora
+      - aurora-mysql
+      - aurora-postgresql
+      - mariadb
+      - oracle-ee
+      - oracle-se2
+      - oracle-se1
+      - oracle-se
+      - sqlserver-ee
+      - sqlserver-se
+      - sqlserver-ex
+      - sqlserver-web
+
+  RDSEngineVersion:
+    Description: Specify RDS instance engine version. "aws rds describe-orderable-db-instance-options --engine <ENGINE>".
+    Type: String
+    ConstraintDescription: must be a valid RDS Engine version.
+    MinLength: 0
+    MaxLength: 20
+
+  RDSStorageSize:
+    Description: Specify RDS instance storage size.
+    Type: Number
+    Default: 20
+
+  RDSMultiAZ:
+    Description: Select "true" if you want to enable RDS Multi-AZ deployment.
+    Type: String
+    Default: no
+    AllowedValues:
+      - yes
+      - no
+
+  RDSMasterPassword:
+    Description: Specify a RDS database master password. Special characters and spaces are not allowed.
+    Type: String
+    NoEcho: true
+    MinLength: 0
+    MaxLength: 25
+    AllowedPattern: ^[a-zA-Z0-9]*$
+
+  RDSBackupRetention:
+    Description: The number of days for which automated backups are retained. From 0 to 35 days.
+    Type: Number
+    Default: 1
+    MinValue: 0
+    MaxValue: 35
+
+  RDSDeletionProtection:
+    Description: Select "true" to enable deletion protection.
+    Type: String
+    Default: no
+    AllowedValues:
+      - yes
+      - no
+
+  ## Launch Template
+  LaunchTemplateS3URL:
+    Description: S3 URL of LaunchTemplate Template.
+    Type: String
+    AllowedPattern : ".+"
+  AMIId:
+    Description: Specify AMI Id
+    Type: AWS::EC2::Image::Id
+
+  EC2InstanceType:
+    Description: Specify EC2 instance type
+    Type: String
+
+  ## ASG
+  ASGTemplateS3URL:
+    Description: S3 URL of ASG Template.
+    Type: String
+    AllowedPattern : ".+"
+
+  ## ALB
+  ALBTemplateS3URL:
+    Description: S3 URL of ALB Template.
+    Type: String
+    AllowedPattern : ".+"
+
+  SSLCertificateArns:
+    Description: Specify a SSL Certificate ARN that will be attached to ELB HTTPS listener.
+    Type: String
+    ConstraintDescription: must be the ARN of an existing certificate.
+
+
+Resources:
+  # Network
+  NetworkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        Project: !Ref Project
+        EnvironmentName: !Ref Environment
+        DedicatedNAT: !Ref DedicatedNAT
+        VPCCIDR: !Ref VPCCIDR
+        PublicSubnet1CIDR: !Ref PublicSubnet1CIDR
+        PublicSubnet2CIDR: !Ref PublicSubnet2CIDR
+        PublicSubnet3CIDR: !Ref PublicSubnet3CIDR
+        PrivateSubnet1CIDR: !Ref PrivateSubnet1CIDR
+        PrivateSubnet2CIDR: !Ref PrivateSubnet2CIDR
+        PrivateSubnet3CIDR: !Ref PrivateSubnet3CIDR
+        PrivateSubnetNAT1CIDR: !Ref PrivateSubnetNAT1CIDR
+        PrivateSubnetNAT2CIDR: !Ref PrivateSubnetNAT2CIDR
+        PrivateSubnetNAT3CIDR: !Ref PrivateSubnetNAT3CIDR
+      TemplateURL: !Ref NetworkTemplateS3URL
+      TimeoutInMinutes: 15
+
+  # Bastion
+  BastionStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        EC2Name: !Join ['-', [!Ref Project, "bastion"]]
+        KeyName: !Ref KeyName
+        EC2InstanceType: !Ref BastionInstanceType
+        VPC: !GetAtt NetworkStack.Outputs.VPCId
+        Subnet: !GetAtt NetworkStack.Outputs.PublicSubnet1
+        AMIId: !Ref BastionAMIId
+        AllocateEIP: !Ref AllocateEIP
+      TemplateURL: !Ref EC2TemplateS3URL
+      TimeoutInMinutes: 15
+    DependsOn:
+      - NetworkStack
+
+  # RDS
+  RDSStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        RDSName: !Ref Project
+        VPC: !GetAtt NetworkStack.Outputs.VPCId
+        RDSSubnets: !Join [',', [!GetAtt NetworkStack.Outputs.PrivateSubnet1, !GetAtt NetworkStack.Outputs.PrivateSubnet2, !GetAtt NetworkStack.Outputs.PrivateSubnet3]]
+        RDSInstanceType: !Ref RDSInstanceType
+        RDSStorageSize: !Ref RDSStorageSize
+        RDSEngine: !Ref RDSEngine
+        RDSEngineVersion: !Ref RDSEngineVersion
+        RDSMasterPassword: !Ref RDSMasterPassword
+        RDSMultiAZ: !Ref RDSMultiAZ
+        RDSDeletionProtection: !Ref RDSDeletionProtection
+        RDSBackupRetention: !Ref RDSBackupRetention
+      TemplateURL: !Ref RDSTemplateS3URL
+      TimeoutInMinutes: 15
+    DependsOn:
+      - NetworkStack
+
+  # Launch Template
+  LTStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        LaunchTemplateName: !Ref Project
+        EC2InstanceType: !Ref EC2InstanceType
+        AMIId: !Ref AMIId
+        VPC: !GetAtt NetworkStack.Outputs.VPCId
+      TemplateURL: !Ref LaunchTemplateS3URL
+      TimeoutInMinutes: 15
+    DependsOn:
+      - NetworkStack
+
+  # AutoScaling Group
+  ASGStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        TargetGroupARN: !GetAtt ALBStack.Outputs.TargetGroupARN
+        LaunchTemplate: !GetAtt LTStack.Outputs.LaunchTemplateId
+        Subnets: !Join [',', [!GetAtt NetworkStack.Outputs.PrivateSubnetNAT1, !GetAtt NetworkStack.Outputs.PrivateSubnetNAT2, !GetAtt NetworkStack.Outputs.PrivateSubnetNAT3]]
+      TemplateURL: !Ref ASGTemplateS3URL
+      TimeoutInMinutes: 15
+    DependsOn:
+      - NetworkStack
+      - LTStack
+      - ALBStack
+
+  # ALB
+  ALBStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ELBName: !Ref Project
+        VPC: !GetAtt NetworkStack.Outputs.VPCId
+        Subnets: !Join [',', [!GetAtt NetworkStack.Outputs.PublicSubnet1, !GetAtt NetworkStack.Outputs.PublicSubnet2, !GetAtt NetworkStack.Outputs.PublicSubnet3]]
+        SSLCertificateArns: !Ref SSLCertificateArns
+      TemplateURL: !Ref ALBTemplateS3URL
+      TimeoutInMinutes: 15
+    DependsOn:
+      - NetworkStack
+      - LTStack
+
+  ALBEC2IngressRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt LTStack.Outputs.SecurityGroupId
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !GetAtt ALBStack.Outputs.SecurityGroupId
+    DependsOn:
+      - LTStack
+      - ALBStack
+
+  EC2RDSIngressRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt RDSStack.Outputs.SecurityGroupId
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      SourceSecurityGroupId: !GetAtt LTStack.Outputs.SecurityGroupId
+    DependsOn:
+      - LTStack
+      - RDSStack
+
+  # S3 Bucket to store media files
+  S3MediaBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Join ['-', ["media-saltware", !Ref Project]]
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          -
+            ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+
+  # IAM Policy to give access to S3 buckets created by CloudFormation
+  IAMS3Policy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Join ['-', ["s3", "media", !Ref Project]]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - s3:AbortMultipartUpload
+              - s3:DeleteObject
+              - s3:Get*
+              - s3:List*
+              - s3:PutObject
+              - s3:PutObjectAcl
+            Resource:
+              - !Join ['', ['arn:aws:s3:::', !Ref 'S3MediaBucket']]
+              - !Join ['', ['arn:aws:s3:::', !Ref 'S3MediaBucket', /*]]
+      Roles:
+        - !GetAtt LTStack.Outputs.IAMRoleId
+    DependsOn:
+      - S3MediaBucket
+      - LTStack

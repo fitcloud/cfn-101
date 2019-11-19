@@ -1,0 +1,139 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: EC2 CloudFormation Template
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Parameters:
+          - EC2Name
+          - EC2InstanceType
+          - AMIId
+          - KeyName
+          - VPC
+          - Subnet
+          - AllocateEIP
+
+    ParameterLabels:
+      EC2Name:
+        default: EC2 Instance Name
+      EC2InstanceType:
+        default: Instance Type
+      AMIId:
+        default: AMI Id
+      KeyName:
+        default: EC2 Key Pair Name
+      AllocateEIP:
+        default: Elastic IP
+
+
+# Custom Variable for the environment
+Parameters:
+  EC2Name:
+    Description: Name tag for EC2
+    Type: String
+
+  # Keypair should be manually created prior to create cloudformation stack(EC2 -> KeyPair)
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair
+
+  EC2InstanceType:
+    Description: Specify EC2 instance type
+    Type: String
+
+  VPC:
+    Description: Specify VPC Id
+    Type: AWS::EC2::VPC::Id
+
+  Subnet:
+    Description: Specify Subnet Id
+    Type: AWS::EC2::Subnet::Id
+
+  AMIId:
+    Description: Specify AMI Id
+    Type: AWS::EC2::Image::Id
+
+  AllocateEIP:
+    Description: Select "yes" if you want to assign EIP to an instance
+    Type: String
+    AllowedValues:
+      - yes
+      - no
+
+Conditions:
+  UseAllocateEIP: !Equals [!Ref AllocateEIP, yes]
+
+Resources:
+
+  # IAM roles assigned to EC2 instnaces
+  IAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
+
+  # IAM Instance profile assigned to EC2 instnaces
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref IAMRole
+    DependsOn: IAMRole
+
+  # Security Group assigned to EC2 instnaces
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Join ['-', [!Ref EC2Name, "sg"]]
+      GroupDescription: !Join [' ', [!Ref EC2Name, "Instance", "Security Group"]]
+      VpcId: !Ref VPC
+      Tags:
+        -
+          Key: Name
+          Value: !Join ['-', [!Ref EC2Name, "InstanceSecurityGroup"]]
+
+  Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AMIId
+      InstanceType: !Ref EC2InstanceType
+      DisableApiTermination: false
+      InstanceInitiatedShutdownBehavior: stop
+      Monitoring: false
+      KeyName: !Ref KeyName
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+      SubnetId: !Ref Subnet
+      Tags:
+        -
+          Key: Name
+          Value: !Ref EC2Name
+    DependsOn:
+      - InstanceSecurityGroup
+
+  EIP:
+    Type: AWS::EC2::EIP
+    Condition: UseAllocateEIP
+
+  EIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Condition: UseAllocateEIP
+    Properties:
+      AllocationId: !GetAtt EIP.AllocationId
+      InstanceId: !Ref Instance
+    DependsOn:
+      - EIP
+      - Instance

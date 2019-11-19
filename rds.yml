@@ -1,0 +1,186 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: RDS CloudFormation Template
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Parameters:
+          - RDSName
+          - RDSSubnets
+          - RDSInstanceType
+          - RDSStorageSize
+          - RDSEngine
+          - RDSEngineVersion
+          - RDSMasterPassword
+          - RDSMultiAZ
+          - RDSDeletionProtection
+          - RDSBackupRetention
+
+    ParameterLabels:
+      RDSName:
+        default: RDS instance identifier
+      RDSSubnets:
+        default: RDS subnets
+      RDSInstanceType:
+        default: RDS instance type
+      RDSStorageSize:
+        default: RDS instance storage size
+      RDSEngine:
+        default: RDS instance engine
+      RDSEngineVersion:
+        default: RDS instance engine version
+      RDSMultiAZ:
+        default: RDS Multi-AZ deployment
+      RDSMasterPassword:
+        default: RDS database master password
+      RDSDeletionProtection:
+        default: RDS deletion protection
+      RDSBackupRetention:
+        default: RDS backup retention period
+
+# Custom Variable for the environment
+Parameters:
+  RDSName:
+    Description: Name tag for RDS
+    Type: String
+
+  VPC:
+    Description: Specify VPC Id
+    Type: AWS::EC2::VPC::Id
+
+  RDSSubnets:
+    Description: Specify Subnet Ids
+    Type: List<AWS::EC2::Subnet::Id>
+
+  RDSInstanceType:
+    Description: Specify RDS instance type.
+    Type: String
+
+  RDSEngine:
+    Description: Specify RDS instance engine type.
+    Type: String
+    ConstraintDescription: must be a valid RDS Engine.
+    MinLength: 0
+    MaxLength: 20
+    Default: mysql
+    AllowedValues:
+      - mysql
+      - postgres
+      - aurora
+      - aurora-mysql
+      - aurora-postgresql
+      - mariadb
+      - oracle-ee
+      - oracle-se2
+      - oracle-se1
+      - oracle-se
+      - sqlserver-ee
+      - sqlserver-se
+      - sqlserver-ex
+      - sqlserver-web
+
+  RDSEngineVersion:
+    Description: Specify RDS instance engine version. "aws rds describe-orderable-db-instance-options --engine <ENGINE>".
+    Type: String
+    ConstraintDescription: must be a valid RDS Engine version.
+    MinLength: 0
+    MaxLength: 20
+
+  RDSStorageSize:
+    Description: Specify RDS instance storage size.
+    Type: Number
+    Default: 20
+
+  RDSMultiAZ:
+    Description: Select "true" if you want to enable RDS Multi-AZ deployment.
+    Type: String
+    Default: no
+    AllowedValues:
+      - yes
+      - no
+
+  RDSMasterPassword:
+    Description: Specify a RDS database master password. Special characters and spaces are not allowed.
+    Type: String
+    NoEcho: true
+    MinLength: 0
+    MaxLength: 25
+    AllowedPattern: ^[a-zA-Z0-9]*$
+
+  RDSBackupRetention:
+    Description: The number of days for which automated backups are retained. From 0 to 35 days.
+    Type: Number
+    Default: 1
+    MinValue: 0
+    MaxValue: 35
+
+  RDSDeletionProtection:
+    Description: Select "true" to enable deletion protection.
+    Type: String
+    Default: no
+    AllowedValues:
+      - yes
+      - no
+
+Resources:
+
+  # RDS (PostgreSQL)
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Join ['-', [!Ref RDSName, "rds-sg"]]
+      GroupDescription: !Join [' ', [!Ref RDSName, "RDS", "Security Group"]]
+      VpcId: !Ref VPC
+      Tags:
+        -
+          Key: Name
+          Value: !Join ['-', [!Ref RDSName, "RDSSecurityGroup"]]
+
+  RDSSubnetGroup:
+    Type: "AWS::RDS::DBSubnetGroup"
+    Properties:
+      DBSubnetGroupDescription: !Join [' ', [!Ref RDSName, "RDS", "Subnet Group"]]
+      SubnetIds: !Ref RDSSubnets
+      Tags:
+        -
+          Key: Name
+          Value: !Join ['-', [!Ref RDSName, "RDSSubnetGroup"]]
+
+  RDS:
+    Type: "AWS::RDS::DBInstance"
+    Properties:
+      AllowMajorVersionUpgrade: false
+      AutoMinorVersionUpgrade: true
+      BackupRetentionPeriod: !Ref RDSBackupRetention
+      CopyTagsToSnapshot: true
+      DBInstanceClass: !Ref RDSInstanceType
+      AllocatedStorage: !Ref RDSStorageSize
+      StorageType: gp2
+      Engine: !Ref RDSEngine
+      EngineVersion: !Ref RDSEngineVersion
+      DeletionProtection: !Ref RDSDeletionProtection
+      MasterUsername: master
+      MasterUserPassword: !Ref RDSMasterPassword
+      DBInstanceIdentifier: !Join ['-', [!Ref RDSName, !Ref RDSEngine]]
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      MultiAZ: !Ref RDSMultiAZ
+      PreferredBackupWindow: 13:00-14:00
+      PreferredMaintenanceWindow: sun:14:00-sun:15:0
+      PubliclyAccessible: false
+      Tags:
+        -
+          Key: Name
+          Value: !Join ['-', [!Ref RDSName, !Ref RDSEngine]]
+    DependsOn:
+      - RDSSecurityGroup
+      - RDSSubnetGroup
+
+Outputs:
+  SecurityGroupId:
+    Description: Security Group ID
+    Value: !Ref RDSSecurityGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-SecurityGroupId

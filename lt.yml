@@ -1,0 +1,120 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: EC2 Launch Template CloudFormation Template
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Parameters:
+          - LaunchTemplateName
+          - EC2InstanceType
+          - AMIId
+          - VPC
+
+    ParameterLabels:
+      LaunchTemplateName:
+        default: Launch Template Name
+      AMIId:
+        default: AMI Id
+      EC2InstanceType:
+        default: Instance Type
+
+# Custom Variable for the environment
+Parameters:
+  LaunchTemplateName:
+    Description: Specify Launch Template Name
+    Type: String
+
+  VPC:
+    Description: Specify VPC Id
+    Type: AWS::EC2::VPC::Id
+
+  AMIId:
+    Description: Specify AMI Id
+    Type: AWS::EC2::Image::Id
+
+  EC2InstanceType:
+    Description: Specify EC2 instance type
+    Type: String
+
+Resources:
+  # IAM roles assigned to EC2 instnaces
+  IAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - sts:AssumeRole
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
+
+  # IAM Instance profile assigned to EC2 instnaces
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref IAMRole
+    DependsOn: IAMRole
+
+  # Security Group assigned to EC2 instnaces
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Join ['-', [!Ref LaunchTemplateName, "sg"]]
+      GroupDescription: !Join [' ', [!Ref LaunchTemplateName, "Instance", "Security Group"]]
+      VpcId: !Ref VPC
+      Tags:
+        -
+          Key: Name
+          Value: !Join ['-', [!Ref LaunchTemplateName, "InstanceSecurityGroup"]]
+
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Name: !Ref InstanceProfile
+        ImageId: !Ref AMIId
+        InstanceType: !Ref EC2InstanceType
+        SecurityGroupIds:
+          - !Ref InstanceSecurityGroup
+        UserData:
+          Fn::Base64:
+            !Sub |
+                #!/bin/bash -xe
+                sudo yum install -y httpd
+                echo "<html>Hello-World!!</html>" > /tmp/index.html
+                sudo cp /tmp/index.html /var/www/html/index.html
+                sudo chmod 755 /var/www/html/index.html
+                sudo service httpd start
+                sudo chkconfig httpd on
+      LaunchTemplateName: !Ref LaunchTemplateName
+    DependsOn:
+      - InstanceSecurityGroup
+      - InstanceProfile
+
+Outputs:
+  LaunchTemplateId:
+    Description: LaunchTemplate ID
+    Value: !Ref LaunchTemplate
+    Export:
+      Name: !Sub ${AWS::StackName}-LaunchTemplateId
+  SecurityGroupId:
+    Description: Security Group ID
+    Value: !Ref InstanceSecurityGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-SecurityGroupId
+
+  IAMRoleId:
+    Description: IAMRole Id
+    Value: !Ref IAMRole
+    Export:
+      Name: !Sub ${AWS::StackName}-IAMRoleId

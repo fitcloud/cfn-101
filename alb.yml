@@ -1,0 +1,124 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ELB CloudFormation Template
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Parameters:
+          - ELBName
+          - VPC
+          - Subnets
+          - SSLCertificateArns
+
+    ParameterLabels:
+      ELBName:
+        default: ELB Name
+      SSLCertificateArns:
+        default: SSL Certificate
+
+
+# Custom Variable for the environment
+Parameters:
+  ELBName:
+    Description: Name tag for ELB
+    Type: String
+
+  VPC:
+    Description: Specify VPC Id
+    Type: AWS::EC2::VPC::Id
+
+  Subnets:
+    Description: Specify Subnet Ids
+    Type: List<AWS::EC2::Subnet::Id>
+
+  SSLCertificateArns:
+    Description: Specify a SSL Certificate ARN that will be attached to ELB HTTPS listener.
+    Type: String
+    ConstraintDescription: must be the ARN of an existing certificate.
+
+Resources:
+
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Join ['-', [!Ref ELBName, "ALB"]]
+      GroupDescription: !Join [' ', [!Ref ELBName, "ALB", "Security Group"]]
+      SecurityGroupIngress:
+        -
+          IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: 80
+          ToPort : 80
+        -
+          IpProtocol: tcp
+          CidrIp: 0.0.0.0/0
+          FromPort: 443
+          ToPort : 443
+
+      VpcId: !Ref VPC
+
+  ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Join ['-', [!Ref ELBName, "alb"]]
+      Type: application
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Subnets: !Ref Subnets
+    DependsOn:
+      - ALBSecurityGroup
+
+  ALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Join ['-', [!Ref ELBName, "tg"]]
+      HealthCheckProtocol: HTTP
+      Port: 80
+      Protocol: HTTP
+      VpcId: !Ref VPC
+
+  ALBHTTPListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ALB
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        -
+          TargetGroupArn: !Ref ALBTargetGroup
+          Type: forward
+    DependsOn:
+      - ALBTargetGroup
+      - ALB
+
+  ALBHTTPSListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      Certificates:
+        -
+          CertificateArn: !Ref SSLCertificateArns
+      LoadBalancerArn: !Ref ALB
+      Port: 443
+      Protocol: HTTPS
+      DefaultActions:
+        -
+          TargetGroupArn: !Ref ALBTargetGroup
+          Type: forward
+    DependsOn:
+      - ALBTargetGroup
+      - ALB
+
+Outputs:
+  TargetGroupARN:
+    Description: Target Group ARN
+    Value: !Ref ALBTargetGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-TargetGroupARN
+
+  SecurityGroupId:
+    Description: Security Group ID
+    Value: !Ref ALBSecurityGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-SecurityGroupId
