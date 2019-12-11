@@ -7,7 +7,7 @@ Metadata:
       -
         Parameters:
           - EC2Name
-          - EC2InstanceType
+          - Environment
           - AMIId
           - KeyName
           - VPC
@@ -17,8 +17,8 @@ Metadata:
     ParameterLabels:
       EC2Name:
         default: EC2 Instance Name
-      EC2InstanceType:
-        default: Instance Type
+      Environment:
+        default: Environment
       AMIId:
         default: AMI Id
       KeyName:
@@ -39,9 +39,13 @@ Parameters:
     Type: AWS::EC2::KeyPair::KeyName
     ConstraintDescription: must be the name of an existing EC2 KeyPair
 
-  EC2InstanceType:
-    Description: Specify EC2 instance type
+  Environment:
+    Description: Specify Environment
     Type: String
+    AllowedValues:
+      - test
+      - stag
+      - prod
 
   VPC:
     Description: Specify VPC Id
@@ -61,6 +65,13 @@ Parameters:
     AllowedValues:
       - yes
       - no
+
+Mappings: 
+  Specs:
+    InstanceType: 
+      test: t2.micro
+      stag: t2.medium
+      prod: m5.large
 
 Conditions:
   UseAllocateEIP: !Equals [!Ref AllocateEIP, yes]
@@ -104,30 +115,72 @@ Resources:
         -
           Key: Name
           Value: !Join ['-', [!Ref EC2Name, "InstanceSecurityGroup"]]
+  
+  # Security Group Ingress Rule
+  HTTPIngressRule:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref InstanceSecurityGroup
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: 0.0.0.0/0
+    DependsOn:
+      - InstanceSecurityGroup
+
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        DisableApiTermination: false
+        InstanceInitiatedShutdownBehavior: stop
+        IamInstanceProfile:
+          Name: !Ref InstanceProfile
+        ImageId: !Ref AMIId
+        InstanceType: !FindInMap [Specs, InstanceType, !Ref Environment]
+        Monitoring:
+          Enabled: false
+        KeyName: !Ref KeyName
+        SecurityGroupIds:
+          - !Ref InstanceSecurityGroup
+        TagSpecifications:
+          -
+            ResourceType: instance
+            Tags:
+              -
+                Key: Name
+                Value: !Ref EC2Name
+        UserData:
+          Fn::Base64:
+            !Sub |
+                #!/bin/bash -xe
+                sudo yum install -y httpd
+                echo "<html>Hello-World!!</html>" > /tmp/index.html
+                sudo cp /tmp/index.html /var/www/html/index.html
+                sudo chmod 755 /var/www/html/index.html
+                sudo service httpd start
+                sudo chkconfig httpd on
+      LaunchTemplateName: !Ref EC2Name
+    DependsOn:
+      - InstanceSecurityGroup
+      - InstanceProfile
 
   Instance:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: !Ref AMIId
-      InstanceType: !Ref EC2InstanceType
-      DisableApiTermination: false
-      InstanceInitiatedShutdownBehavior: stop
-      Monitoring: false
-      KeyName: !Ref KeyName
-      SecurityGroupIds:
-        - !Ref InstanceSecurityGroup
+      LaunchTemplate: 
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
       SubnetId: !Ref Subnet
-      Tags:
-        -
-          Key: Name
-          Value: !Ref EC2Name
     DependsOn:
-      - InstanceSecurityGroup
-
+      - LaunchTemplate
+  
+  ## Assign Elastic IP
   EIP:
     Type: AWS::EC2::EIP
     Condition: UseAllocateEIP
 
+  ## Associate Elastic IP
   EIPAssociation:
     Type: AWS::EC2::EIPAssociation
     Condition: UseAllocateEIP

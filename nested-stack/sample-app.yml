@@ -247,6 +247,7 @@ Parameters:
     Description: S3 URL of EC2 Template.
     Type: String
     AllowedPattern : ".+"
+    
   # Keypair should be manually created prior to create cloudformation stack(EC2 -> KeyPair)
   KeyName:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
@@ -540,3 +541,8 @@ Resources:
     DependsOn:
       - S3MediaBucket
       - LTStack
+
+Outputs:
+  ALBEndpoint:
+    Description: ALB DNS name
+    Value: !GetAtt ALBStack.Outputs.ALBEndpoint

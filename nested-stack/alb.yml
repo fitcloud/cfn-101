@@ -117,6 +117,12 @@ Outputs:
     Export:
       Name: !Sub ${AWS::StackName}-TargetGroupARN
 
+  ALBEndpoint:
+    Description: ALB DNS name
+    Value: !GetAtt ALB.DNSName
+    Export:
+      Name: !Sub ${AWS::StackName}-ALBEndpoint
+
   SecurityGroupId:
     Description: Security Group ID
     Value: !Ref ALBSecurityGroup
