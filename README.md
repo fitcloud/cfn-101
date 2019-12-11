@@ -168,7 +168,7 @@
 **[Next]** 클릭
 
 5. **Stack name** = two-tier,\
-**Name of Project** = cfn-lab,\
+**Name of Project** = cfn,\
 **Environment** = test,\
 **NetworkTemplateS3URL** = https://<BUCKET_NAME>.s3.ap-northeast-2.amazonaws.com/vpc.yml,\
 **Dedicated NAT gateways** = false,\
@@ -190,6 +190,36 @@
 **Instance Type** = t2.micro,\
 **AMI Id** = ami-0d59ddf55cdda6e21,\
 **ASGTemplateS3URL** = https://<BUCKET_NAME>.s3.ap-northeast-2.amazonaws.com/asg.yml,\
-**RDS deletion protection** = false,\
-**RDS backup retention period** = 1,\
+**ALBTemplateS3URL** = https://<BUCKET_NAME>.s3.ap-northeast-2.amazonaws.com/alb.yml,\
+**SSL Certificate** = SSL Certificate ARN 입력,\
 **[Next]** 클릭
+
+6. **[Next]** &rightarrow; :white_check_mark: I acknowledge that AWS CloudFormation might create IAM resources with custom names,\
+:white_check_mark: I acknowledge that AWS CloudFormation might require the following capability: CAPABILITY_AUTO_EXPAND &rightarrow; **[Create Stack]**
+
+7. **[Outputs]**을 탭에서 ALBALBEndpoint을 찾고 해당 URL로 접속 가능한지 확인
+
+### 배포 파이프라인 구축
+  - CloudFormation 템플릿들을 Github에 호스팅
+  - AWS CodePipeline을 이용해서 코드 변경시 배포 자동화 구성
+
+1. 해당 [Git Repository](https://github.com/woowhoo/react-ecommerce)를 Fork (GitHub 계정 필수)
+
+2. AWS Management Console에서 좌측 상단에 있는 **[Services]** 를 선택하고 검색창에서 CodePipeline를 검색하거나 **[Developer Tools]** 밑에 있는 **[CodePipeline]** 를 선택
+
+3. **[Create pipeline]** &rightarrow; **Pipeline name** = iac, **Service role** = New service role &rightarrow; **[Next]** &rightarrow; **Source provider** = GitHub &rightarrow; **[Connect to GitHub]** &rightarrow; **Repository** = Step 1에서 Forking한 Repository, **Branch** = master &rightarrow; **[Next]** &rightarrow; **Build provider** = AWS CodeBuild &rightarrow; **[Create project]**
+
+4. **Project name** = iac, **Environment image** = Managed Image, **Operating system** = Amazon Linux 2, **Runtime(s)** = Standard, **Image** = aws/codebuild/amazonlinux2-x86_64-standard:2.0, **Service role** = New service role, **Build specifications** = Insert build commands &rightarrow; **[Switch to editor]** &rightarrow; 아래 커맨드블록을 Build commands에 붙여놓고 **[Continue to CodePipeline]**
+
+   ```yaml
+   version: 0.2
+
+   phases:
+     build:
+       commands:
+         - aws s3 sync nested-stack s3://<BUCKET_NAME>
+   ```
+
+5. **[Next]** &rightarrow; **Deploy provider** = AWS CloudFormation, **Action mode** = Create or update a stack, **Stack name** = two-tier, **Artifact name** = BuildArtifact, **File name** = sample-app.yml, **Capabilities** = 모두 선택, Role name = Role ARN 입력 &rightarrow; **[Next]** &rightarrow; **[Create pipeline]**
+
+   
