@@ -457,6 +457,7 @@ Resources:
       Parameters:
         TargetGroupARN: !GetAtt ALBStack.Outputs.TargetGroupARN
         LaunchTemplate: !GetAtt LTStack.Outputs.LaunchTemplateId
+        LaunchTemplateVersion: !GetAtt LTStack.Outputs.LaunchTemplateVersion
         Subnets: !Join [',', [!GetAtt NetworkStack.Outputs.PrivateSubnetNAT1, !GetAtt NetworkStack.Outputs.PrivateSubnetNAT2, !GetAtt NetworkStack.Outputs.PrivateSubnetNAT3]]
       TemplateURL: !Ref ASGTemplateS3URL
       TimeoutInMinutes: 15

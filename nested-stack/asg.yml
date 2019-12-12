@@ -8,6 +8,7 @@ Metadata:
         Parameters:
           - TargetGroupARN
           - LaunchTemplate
+          - LaunchTemplateVersion
           - Subnets
 
     ParameterLabels:
@@ -15,6 +16,8 @@ Metadata:
         default: Target Group ARN
       LaunchTemplate:
         default: Launch Template
+      LaunchTemplateVersion:
+        default: Launch Template Version
 
 # Custom Variable for the environment
 Parameters:
@@ -24,6 +27,10 @@ Parameters:
 
   LaunchTemplate:
     Description: Specify Launch Template
+    Type: String
+
+  LaunchTemplateVersion:
+    Description: Specify Launch Template Version
     Type: String
 
   Subnets:
@@ -36,7 +43,7 @@ Resources:
     Properties:
       LaunchTemplate:
         LaunchTemplateId: !Ref LaunchTemplate
-        Version: 1
+        Version: !Ref LaunchTemplateVersion
       MinSize: 1
       MaxSize: 3
       TargetGroupARNs:

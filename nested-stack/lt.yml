@@ -107,6 +107,12 @@ Outputs:
     Value: !Ref LaunchTemplate
     Export:
       Name: !Sub ${AWS::StackName}-LaunchTemplateId
+
+  LaunchTemplateVersion:
+    Description: LaunchTemplate Version
+    Value: !GetAtt LaunchTemplate.LatestVersionNumber
+    Export:
+      Name: !Sub ${AWS::StackName}-LaunchTemplateVersion
   SecurityGroupId:
     Description: Security Group ID
     Value: !Ref InstanceSecurityGroup

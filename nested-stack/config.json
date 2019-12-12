@@ -24,7 +24,7 @@
         "RDSStorageSize": "20", 
         "RDSEngine": "mysql", 
         "RDSEngineVersion": "8.0.16", 
-        "RDSMasterPassword": "12312321edsasda", 
+        "RDSMasterPassword": "asdf1234", 
         "RDSMultiAZ": "false", 
         "RDSDeletionProtection": "false", 
         "RDSBackupRetention": "1", 
