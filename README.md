@@ -215,9 +215,18 @@
    version: 0.2
 
    phases:
+     install:
+       runtime-versions:
+         python: 3.8
      build:
        commands:
+         - for f in nested-stack/*.yml; do aws cloudformation validate-template --template-body file://$f; done
          - aws s3 sync nested-stack s3://<BUCKET_NAME>
+   artifacts:
+     files:
+       - nested-stack/sample-app.yml
+       - nested-stack/config.json
+     discard-paths: yes
    ```
 
 5. **[Next]** &rightarrow; **Deploy provider** = AWS CloudFormation, **Action mode** = Create or update a stack, **Stack name** = two-tier, **Artifact name** = BuildArtifact, **File name** = sample-app.yml, **Capabilities** = 모두 선택, Role name = Role ARN 입력 &rightarrow; **[Next]** &rightarrow; **[Create pipeline]**
