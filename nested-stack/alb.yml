@@ -79,7 +79,7 @@ Resources:
       Protocol: HTTP
       VpcId: !Ref VPC
       TargetGroupAttributes:
-        deregistration_delay.timeout_seconds: 30
+        - deregistration_delay.timeout_seconds: 30
 
   ALBHTTPListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
