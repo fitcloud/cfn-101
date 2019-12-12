@@ -91,7 +91,7 @@ Resources:
             !Sub |
                 #!/bin/bash -xe
                 sudo yum install -y httpd
-                echo "<html>Hello-World!! Version 2</html>" > /tmp/index.html
+                echo "<html>Hello-World!! Version 1</html>" > /tmp/index.html
                 sudo cp /tmp/index.html /var/www/html/index.html
                 sudo chmod 755 /var/www/html/index.html
                 sudo service httpd start
