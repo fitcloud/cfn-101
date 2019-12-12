@@ -63,7 +63,7 @@ Resources:
     Properties:
       Name: !Join ['-', [!Ref ELBName, "alb"]]
       Type: application
-      Scheme: internet-facing
+      Scheme: internet-facing        
       SecurityGroups:
         - !Ref ALBSecurityGroup
       Subnets: !Ref Subnets
@@ -78,6 +78,8 @@ Resources:
       Port: 80
       Protocol: HTTP
       VpcId: !Ref VPC
+      TargetGroupAttributes:
+        deregistration_delay.timeout_seconds: 30
 
   ALBHTTPListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
