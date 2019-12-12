@@ -205,11 +205,19 @@
 
 1. 해당 [Git Repository](https://github.com/woowhoo/react-ecommerce)를 Fork (GitHub 계정 필수)
 
-2. AWS Management Console에서 좌측 상단에 있는 **[Services]** 를 선택하고 검색창에서 CodePipeline를 검색하거나 **[Developer Tools]** 밑에 있는 **[CodePipeline]** 를 선택
+2. AWS Management Console에서 좌측 상단에 있는 **[Services]** 를 선택하고 검색창에서 IAM를 검색하거나 **[Security, Identity, & Compliance]** 바로 밑에 있는 **[IAM]** 를 선택
 
-3. **[Create pipeline]** &rightarrow; **Pipeline name** = iac, **Service role** = New service role &rightarrow; **[Next]** &rightarrow; **Source provider** = GitHub &rightarrow; **[Connect to GitHub]** &rightarrow; **Repository** = Step 1에서 Forking한 Repository, **Branch** = master &rightarrow; **[Next]** &rightarrow; **Build provider** = AWS CodeBuild &rightarrow; **[Create project]**
+3. IAM Dashboard에서  **[Roles]** 클릭후, **[Create role]** 클릭
 
-4. **Project name** = iac, **Environment image** = Managed Image, **Operating system** = Amazon Linux 2, **Runtime(s)** = Standard, **Image** = aws/codebuild/amazonlinux2-x86_64-standard:2.0, **Service role** = New service role, **Build specifications** = Insert build commands &rightarrow; **[Switch to editor]** &rightarrow; 아래 커맨드블록을 Build commands에 붙여놓고 **[Continue to CodePipeline]**
+4. **Choose the service that will use this role**에 CloudFormation를 선택 &rightarrow; **[Next: Permissions]** &rightarrow; :white_check_mark: AdministratorAccess &rightarrow; **[Next: Tags]** &rightarrow; **[Next: Review]**
+
+5. **Role name** = cfnlab-codepipeline, **[Create Role]** 클릭
+
+6. AWS Management Console에서 좌측 상단에 있는 **[Services]** 를 선택하고 검색창에서 CodePipeline를 검색하거나 **[Developer Tools]** 밑에 있는 **[CodePipeline]** 를 선택
+
+7. **[Create pipeline]** &rightarrow; **Pipeline name** = iac, **Service role** = New service role &rightarrow; **[Next]** &rightarrow; **Source provider** = GitHub &rightarrow; **[Connect to GitHub]** &rightarrow; **Repository** = Step 1에서 Forking한 Repository, **Branch** = master &rightarrow; **[Next]** &rightarrow; **Build provider** = AWS CodeBuild &rightarrow; **[Create project]**
+
+8. **Project name** = iac, **Environment image** = Managed Image, **Operating system** = Amazon Linux 2, **Runtime(s)** = Standard, **Image** = aws/codebuild/amazonlinux2-x86_64-standard:2.0, **Service role** = New service role, **Build specifications** = Insert build commands &rightarrow; **[Switch to editor]** &rightarrow; 아래 커맨드블록을 Build commands에 붙여놓고 **[Continue to CodePipeline]**
 
    ```yaml
    version: 0.2
@@ -229,6 +237,4 @@
      discard-paths: yes
    ```
 
-5. **[Next]** &rightarrow; **Deploy provider** = AWS CloudFormation, **Action mode** = Create or update a stack, **Stack name** = two-tier, **Artifact name** = BuildArtifact, **File name** = sample-app.yml, **Capabilities** = 모두 선택, Role name = Role ARN 입력 &rightarrow; **[Next]** &rightarrow; **[Create pipeline]**
-
-   
+9. **[Next]** &rightarrow; **Deploy provider** = AWS CloudFormation, **Action mode** = Create or update a stack, **Stack name** = two-tier, **Artifact name** = BuildArtifact, **File name** = sample-app.yml, :white_check_mark: Use configuration file, **Artifact name** = BuildArtifact, **File name** = config.json, **Capabilities** = 모두 선택, Role name = cfnlab-codepipeline &rightarrow; **[Next]** &rightarrow; **[Create pipeline]**
