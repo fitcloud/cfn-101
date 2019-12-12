@@ -49,6 +49,9 @@ Resources:
       TargetGroupARNs:
         - !Ref TargetGroupARN
       VPCZoneIdentifier: !Ref Subnets
+    UpdatePolicy:
+      AutoScalingReplacingUpdate:
+        WillReplace: true
 
   ScaleUpPolicy:
     Type: AWS::AutoScaling::ScalingPolicy
