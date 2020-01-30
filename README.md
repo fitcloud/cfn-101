@@ -2,6 +2,16 @@
 
 코드형 인프라 또는 인프라 코드화는 이름 자체에서 설명하듯이 인프라를 코드를 통해서 구성 및 설정하는 방법론입니다. 인프라를 일종의 소프트웨어라고 생각하고 기계가 읽을 수 언어를 (프로그래밍 언어 또는 코드) 사용해서 개발하는 Pracitce 입니다.
 
+## Lab Overview
+
+1. CloudFormation의 기본적인 Syntax 소개, 스택 생성 및 업데이트 실습
+
+2. CFN 템플릿 재사용 방안 및 모듈화된 (Nested Stack) 스택 구성 실습
+
+3. AWS CodePipeline으로 배포 자동화 구축 실습
+
+4. AWS System Manager를 이용한 Parameter 암호화 구성 실습
+
 ## CloudFormation 101
 
 ![CloudFormation](media/cfn.png)
