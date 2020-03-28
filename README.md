@@ -96,13 +96,15 @@
 
 4. 기존에 입력한 Parameters를 변경하지 말고 **[Next]** 클릭 &rightarrow; **[Next]** &rightarrow; :white_check_mark: I acknowledge that AWS CloudFormation might create IAM resources. &rightarrow; **[Update Stack]**
 
-5. 새롭게 추가된 Userdata가 적용 되었는지 확인, 안되었다면 무엇이 때문인지 확인
+5. 새롭게 추가된 Userdata가 적용 되었는지 확인, 안되었다면 무엇이 문제인지 확인
 
 6. 위에서 생성한 CloudFormation 스택을 삭제하고 ec2-lt.yml을 이용해서 스택 생성
 
-7. Step 1 & 2에 명시된 보안그룹 인바운드 룰 및 Userdata script를 ec2-lt.yml에 적용 후 스택 업데이트.
+7. Step 1 & 2에 명시된 보안그룹 인바운드 룰 및 Userdata script를 ec2-lt.yml에 적용 후 스택 업데이트 (*ec2-lt-userdata.yml* 파일을 참고)
 
 8. Userdata 내용이 적용 되었는지 확인, Step 5와의 차이점 비교
+
+9. CloudFormation 스택 삭제
 
 > CloudFormation Update Behaviors: 각 Resource의 속성 변경시 해당 Resource가 재시작 또는 재생성 될수 있고 이부분은 CloudFormation Developer Guide에 명시되어 있습니다. EC2를 예로 들자면 **UserData**의 경우에는 Some Interruption으로 기존에 생성된 인스턴스를 유지하되 재시작 또는 리부팅이 일어날수 있고, **LaunchTemplate**의 경우에는 Replacement로 인스턴스가 교체됩니다. 따라서 위의 예에서 Userdata에 스크립트를 추가했을때 반영이 되지 않았던 이유는 Userdata는 인스턴스 생성시에만 실행되기 때문입니다. CloudFormation을 통해서 Resources을 업데이트 할 경우 해당 속성의 Update rule을 꼭 참고하길 권장합니다.
 
@@ -167,7 +169,7 @@
 
 5. **[Next]** &rightarrow; :white_check_mark: I acknowledge that AWS CloudFormation might create IAM resources. &rightarrow; **[Create Stack]**
 
-> 만약에 특정 스택이 다른 스택에 의해서 레퍼런스 되고 있으면 그 스택은 수정 및 삭제가 불가능합니다. Cross-stack reference를 사용하게 되는 경우 한개를 예로 들자면, Sysadmin을 제외한 모든 유저에게 보안그룹 생성 및 수정에 대한 권한을 없애고 cross-stack reference를 통해서먼 이미 정해진 보안그룹을 사용하게 하여 보안 Compliance를 유지한다거나 보안사고를 예방할수 있습니다.
+> 만약에 특정 스택이 다른 스택에 의해서 레퍼런스 되고 있으면 그 스택은 수정 및 삭제가 불가능합니다. Cross-stack reference를 사용하게 되는 경우 한개를 예로 들자면, Sysadmin을 제외한 모든 유저에게 보안그룹 생성 및 수정에 대한 권한을 없애고 cross-stack reference를 통해서만 이미 정해진 보안그룹을 사용하게 하여 보안 Compliance를 유지한다거나 보안사고를 예방할수 있습니다.
 
 ## Nested Stack 으로 2-tier 아키텍쳐 배포
 
@@ -202,7 +204,7 @@
 **RDS instance storage size** = 20,\
 **RDS instance engine** = mysql,\
 **RDS instance engine version** = 8.0.16,\
-**RDS database master password** = 원하는 비밀번호 입력,\
+**RDS database master password** = 원하는 비밀번호 입력(8자 이상 대소문자만 구성),\
 **RDS Multi-AZ deployment** = false,\
 **RDS deletion protection** = false,\
 **RDS backup retention period** = 1,\
@@ -270,7 +272,7 @@
 
 2. ALB Endpoint로 접속해서 변경된 사항이 적용 됬는지 확인
 
-3. Launch Template & Auto Scaling Group에 변경된 사항아 적용 됬는지 확인
+3. Launch Template & Auto Scaling Group에 변경된 사항 적용 됐는지 확인
 
 4. nested-stack/asg.yml 파일을 열고 AutoScalingGroup 블록을 아래와 같이 수정 후 Commit
 
@@ -310,3 +312,11 @@
    ```
 
 > 해당 CodePipeline에 부여된 CloudFormation Service Role에 가지고 오려는 SSM Secure String Parameter에 대한 엑세스 권한과 해당 Parameter를 암호화한 KMS Key에 대한 엑세스 권한이 부여되어야 합니다. 또한 Secrets Manager를 통해서도 RDS MasterUserPassword를 설정할수 있습니다.
+
+## Cleanup
+
+1. CodePipeline 삭제
+2. CodeBuild 삭제
+3. CloudFormation 스택 삭제
+4. Systems Manager Parameter Store 파라미터 삭제
+5. S3 Bucket 삭제
