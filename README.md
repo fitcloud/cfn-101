@@ -104,7 +104,7 @@
 
 8. Userdata 내용이 적용 되었는지 확인, Step 5와의 차이점 비교
 
-> CloudFormation Update Behaviors: 각 Resource의 속성 변경시 해당 Resource가 재시작 또는 재생성 될수 있고 이부분은 CloudFormation Developer Guide에 명시되어 있습니다. EC2를 예로 들자면 **UserData**의 경우에는 Some Interruption으로 기존에 생성된 인스턴스를 유지하되 재시작 또는 리부팅이 일어날수 있고, **LaunchTemplate**의 경우에는 Replacement로 인스턴스가 교체됩니다. 따라서 위의 예에서 Userdata에 스크립트를 추가했을때 반영이 되지 않았던 이유는 Userdata는 인스턴스 생성시에만 실행되기 때문입니다. CloudFormation을 통해서 Resources을 업데이트 할 경우 해당 속성의 Update rule을 꼭 참고하길 권장합니다. 
+> CloudFormation Update Behaviors: 각 Resource의 속성 변경시 해당 Resource가 재시작 또는 재생성 될수 있고 이부분은 CloudFormation Developer Guide에 명시되어 있습니다. EC2를 예로 들자면 **UserData**의 경우에는 Some Interruption으로 기존에 생성된 인스턴스를 유지하되 재시작 또는 리부팅이 일어날수 있고, **LaunchTemplate**의 경우에는 Replacement로 인스턴스가 교체됩니다. 따라서 위의 예에서 Userdata에 스크립트를 추가했을때 반영이 되지 않았던 이유는 Userdata는 인스턴스 생성시에만 실행되기 때문입니다. CloudFormation을 통해서 Resources을 업데이트 할 경우 해당 속성의 Update rule을 꼭 참고하길 권장합니다.
 
 ### Mapping
 
@@ -139,6 +139,7 @@
 > 스택 생성시 Parameters를 통해서 원하는 속성값들을 지정할수 있지만 만약에 이미 규정해놓은 설정값 또는 환경 변수에 맞춰서 따라야 하는 규약이 있다면 Mapping을 사용할수 있습니다. 가장 많이 활용되는 예를 들자면 리전에 따라서 AMI ID를 지정해 놓는 방법입니다. Amazon Linux 2 - 2019.09 이라는 버전이 있다고 한다면 각 리전별로 다른 AMI ID를 가지고 있습니다. 이 정보를 Mapping에 넣어두고, Pseudo Parameter인 AWS::Region를 이용하면 모든 리전에서 사용 가능한 템플릿 작성이 가능해집니다 (Disaster Recovery 대비용으로 사용 가능)
 
 ### Cross-stack reference
+
 ![Architecture Overview](media/csr.png)
 
 1. CloudFormation을 Dashboard에서 **[Create stack]** 클릭후,\
@@ -166,7 +167,7 @@
 
 5. **[Next]** &rightarrow; :white_check_mark: I acknowledge that AWS CloudFormation might create IAM resources. &rightarrow; **[Create Stack]**
 
-> 만약에 특정 스택이 다른 스택에 의해서 레퍼런스 되고 있으면 그 스택은 수정 및 삭제가 불가능합니다. Cross-stack reference를 사용하게 되는 경우 한개를 예로 들자면, Sysadmin을 제외한 모든 유저에게 보안그룹 생성 및 수정에 대한 권한을 없애고 cross-stack reference를 통해서먼 이미 정해진 보안그룹을 사용하게 하여 보안 Compliance를 유지한다거나 보안사고를 예방할수 있습니다. 
+> 만약에 특정 스택이 다른 스택에 의해서 레퍼런스 되고 있으면 그 스택은 수정 및 삭제가 불가능합니다. Cross-stack reference를 사용하게 되는 경우 한개를 예로 들자면, Sysadmin을 제외한 모든 유저에게 보안그룹 생성 및 수정에 대한 권한을 없애고 cross-stack reference를 통해서먼 이미 정해진 보안그룹을 사용하게 하여 보안 Compliance를 유지한다거나 보안사고를 예방할수 있습니다.
 
 ## Nested Stack 으로 2-tier 아키텍쳐 배포
 
@@ -183,20 +184,20 @@
 4. CloudFormation을 Dashboard에서 **[Create stack]** 클릭후,\
 **Prepare template** = Template is ready,\
 **Template source** = Amazon S3 URL,\
-**Amazon S3 URL** = https://<BUCKET_NAME>.s3.ap-northeast-2.amazonaws.com/sample-app.yml,\
+**Amazon S3 URL** = `https://<BUCKET_NAME>.s3.ap-northeast-2.amazonaws.com/sample-app.yml`,\
 **[Next]** 클릭
 
 5. **Stack name** = two-tier,\
 **Name of Project** = cfn,\
 **Environment** = test,\
-**NetworkTemplateS3URL** = https://<BUCKET_NAME>.s3.ap-northeast-2.amazonaws.com/vpc.yml,\
+**NetworkTemplateS3URL** = `https://<BUCKET_NAME>.s3.ap-northeast-2.amazonaws.com/vpc.yml`,\
 **Dedicated NAT gateways** = false,\
-**EC2TemplateS3URL** = https://<BUCKET_NAME>.s3.ap-northeast-2.amazonaws.com/ec2.yml,\
+**EC2TemplateS3URL** = `https://<BUCKET_NAME>.s3.ap-northeast-2.amazonaws.com/ec2.yml`,\
 **Instance Type** = t2.micro,\
 **AMI Id** = ami-0d59ddf55cdda6e21,\
 **EC2 Key Pair Name** = EC2 인스턴스에 부여할 키페어 지정,\
 **Elastic IP** = Elastic IP 부여 여부 선택,\
-**RDSTemplateS3URL** = https://<BUCKET_NAME>.s3.ap-northeast-2.amazonaws.com/rds.yml,\
+**RDSTemplateS3URL** = `https://<BUCKET_NAME>.s3.ap-northeast-2.amazonaws.com/rds.yml`,\
 **RDS instance type** = db.t2.micro,\
 **RDS instance storage size** = 20,\
 **RDS instance engine** = mysql,\
@@ -205,11 +206,11 @@
 **RDS Multi-AZ deployment** = false,\
 **RDS deletion protection** = false,\
 **RDS backup retention period** = 1,\
-**LaunchTemplateS3URL** = https://<BUCKET_NAME>.s3.ap-northeast-2.amazonaws.com/lt.yml,\
+**LaunchTemplateS3URL** = `https://<BUCKET_NAME>.s3.ap-northeast-2.amazonaws.com/lt.yml`,\
 **Instance Type** = t2.micro,\
 **AMI Id** = ami-0d59ddf55cdda6e21,\
-**ASGTemplateS3URL** = https://<BUCKET_NAME>.s3.ap-northeast-2.amazonaws.com/asg.yml,\
-**ALBTemplateS3URL** = https://<BUCKET_NAME>.s3.ap-northeast-2.amazonaws.com/alb.yml,\
+**ASGTemplateS3URL** = `https://<BUCKET_NAME>.s3.ap-northeast-2.amazonaws.com/asg.yml`,\
+**ALBTemplateS3URL** = `https://<BUCKET_NAME>.s3.ap-northeast-2.amazonaws.com/alb.yml`,\
 **SSL Certificate** = SSL Certificate ARN 입력,\
 **[Next]** 클릭
 
@@ -219,8 +220,9 @@
 7. **[Outputs]** 을 탭에서 ALBEndpoint을 찾고 해당 URL로 접속 가능한지 확인
 
 ### 배포 파이프라인 구축
-  - CloudFormation 템플릿들을 Github에 호스팅
-  - AWS CodePipeline을 이용해서 코드 변경시 배포 자동화 구성
+
+- CloudFormation 템플릿들을 Github에 호스팅
+- AWS CodePipeline을 이용해서 코드 변경시 배포 자동화 구성
 
 1. 해당 Git Repository를 Fork (GitHub 계정 필수)
 
